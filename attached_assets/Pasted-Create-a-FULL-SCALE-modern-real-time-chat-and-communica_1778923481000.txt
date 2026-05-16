@@ -1,0 +1,377 @@
+Create a FULL SCALE modern real-time chat and communication platform similar to WhatsApp + Telegram + Discord + Slack combined, with enterprise-grade architecture, scalable backend, advanced UX/UI, admin panel, and future-ready modular design.
+
+Tech Stack Requirements:
+
+* Frontend: ReactJS + Vite + TypeScript + TailwindCSS + Zustand/Redux + React Query
+* Backend: FastAPI (Python)
+* Database: PostgreSQL preferred (support MySQL optionally)
+* Realtime: WebSockets + Socket.IO or FastAPI WebSocket implementation
+* Authentication: JWT + Refresh Tokens
+* Media Storage: AWS S3 compatible structure (use local storage fallback)
+* ORM: SQLAlchemy + Alembic migrations
+* API Documentation: Swagger/OpenAPI auto-generated
+* Deployment Ready: Docker + Docker Compose
+* Responsive UI for Desktop + Mobile
+* Production-grade folder structure and scalable architecture
+
+Application Name:
+Generate a modern premium app name automatically and use elegant branding.
+
+====================================================
+CORE FEATURES
+=============
+
+1. USER AUTHENTICATION SYSTEM
+
+* Signup/Login with:
+
+  * Email + Password
+  * Mobile Number + OTP
+  * Google Login
+* Admin configurable toggle:
+
+  * Enable/Disable Email Registration
+  * Enable/Disable Mobile Registration
+  * Enable/Disable Social Login
+* Forgot Password
+* Change Password
+* Device Session Management
+* Multi-device login
+* Remember Me
+* Token refresh system
+* Login activity history
+* User verification badges
+
+2. USER PROFILE SYSTEM
+
+* Username
+* Unique user ID
+* Profile photo
+* Bio/About
+* Last seen
+* Online status
+* Privacy controls
+* Status stories like WhatsApp
+* Custom themes/profile colors
+* User blocking/reporting
+* Contact sync simulation
+* Search users via:
+
+  * Username
+  * Email
+  * Mobile Number
+  * User ID
+
+3. REAL-TIME CHAT SYSTEM
+
+* One-to-one chat
+* Real-time messaging
+* Message delivery states:
+
+  * Sent
+  * Delivered
+  * Seen
+* Typing indicators
+* Online indicators
+* Reply to message
+* Forward messages
+* Pin messages
+* Star/Favorite messages
+* Delete for me
+* Delete for everyone
+* Edit messages
+* Emoji reactions
+* GIF support
+* Stickers
+* Rich emoji picker
+* Voice messages
+* Audio waveform UI
+* File sharing
+* Image sharing
+* Video sharing
+* Document sharing
+* Drag and drop uploads
+* Message search
+* Infinite scroll
+* Chat filters
+* Unread counts
+* Archive chats
+* Scheduled messages
+* Self-destruct messages
+* Message translation support
+* Markdown support
+* Code block formatting
+
+4. ADVANCED MEDIA FEATURES
+
+* Image compression
+* Video preview thumbnails
+* Media gallery
+* Media downloader
+* Stream large videos
+* Audio player
+* PDF preview
+* File type icons
+* Upload progress indicators
+* Media caching
+
+5. GROUP CHAT FEATURES
+
+* Create groups
+* Group avatar/banner
+* Group roles:
+
+  * Owner
+  * Admin
+  * Moderator
+  * Member
+* Add/remove users
+* Invite links
+* Group permissions
+* Group media sharing
+* Group pinned messages
+* Polls
+* Events
+* Group announcements
+* Mention users with @
+* Group mute settings
+* Shared files section
+
+6. BROADCAST FEATURES
+
+* Broadcast channels
+* One-way admin broadcasting
+* Multi-user broadcast lists
+* Public channels
+* Subscriber counts
+* Scheduled broadcasts
+* Media broadcasting
+
+7. CALLING FEATURES UI (Mock Functional)
+
+* Audio call UI
+* Video call UI
+* Incoming call screens
+* Group call UI
+* Screen sharing placeholders
+* WebRTC-ready architecture
+
+8. NOTIFICATION SYSTEM
+
+* Push notifications
+* In-app notifications
+* Email notifications
+* Sound notifications
+* Browser notifications
+* Notification settings
+
+9. ADMIN PANEL
+   Create a complete enterprise admin dashboard.
+
+Admin Features:
+
+* Dashboard analytics
+* User management
+* Ban/suspend users
+* Activate/deactivate accounts
+* Registration controls
+* Toggle:
+
+  * Email signup
+  * Mobile signup
+  * OTP requirement
+  * Maintenance mode
+* Broadcast announcements
+* Manage reports
+* Content moderation
+* Group moderation
+* Media moderation
+* Audit logs
+* Active sessions monitoring
+* Platform statistics
+* Storage analytics
+* User growth charts
+* Message analytics
+* System settings
+* Role-based admin access
+* Admin login security
+
+10. SECURITY FEATURES
+
+* Rate limiting
+* CSRF protection
+* XSS protection
+* SQL injection prevention
+* Encrypted passwords
+* Secure JWT handling
+* OTP expiration
+* IP/device tracking
+* Account lock system
+* Secure file uploads
+* Validation everywhere
+
+11. UI/UX REQUIREMENTS
+    Design should be EXTREMELY modern and premium.
+
+UI inspiration:
+
+* WhatsApp Web
+* Telegram Desktop
+* Discord
+* Slack
+* Messenger
+
+Requirements:
+
+* Dark/Light theme
+* Smooth animations
+* Beautiful transitions
+* Glassmorphism
+* Responsive layouts
+* Mobile-first support
+* Sidebar navigation
+* Chat bubbles
+* Elegant typography
+* Skeleton loaders
+* Toast notifications
+* Context menus
+* Keyboard shortcuts
+* Accessibility support
+* Modern dashboard cards
+* Floating action buttons
+
+12. DATABASE DESIGN
+    Create proper normalized schema for:
+
+* Users
+* Sessions
+* Chats
+* Messages
+* Groups
+* Broadcasts
+* Media
+* Notifications
+* Admin logs
+* Roles/permissions
+* OTP verification
+* Settings
+* Reactions
+* Calls
+* Stories/status
+
+Include:
+
+* Indexing
+* Foreign keys
+* Cascade rules
+* Migration files
+
+13. API REQUIREMENTS
+    Create REST APIs for everything:
+
+* Auth APIs
+* Chat APIs
+* Group APIs
+* Broadcast APIs
+* Admin APIs
+* Upload APIs
+* Notification APIs
+
+Also include:
+
+* WebSocket events documentation
+* API versioning
+* Proper status codes
+* Pagination
+* Filtering
+* Search support
+
+14. PERFORMANCE & SCALABILITY
+
+* Lazy loading
+* Code splitting
+* Optimized rendering
+* Virtualized message lists
+* Redis caching support
+* Background workers
+* Queue-ready architecture
+* CDN-ready assets
+* Modular backend services
+
+15. DEVOPS REQUIREMENTS
+
+* Docker setup
+* Environment variables
+* Production config
+* Development config
+* CI/CD ready structure
+* Health check endpoints
+* Logging system
+* Error handling middleware
+
+16. EXTRA PREMIUM FEATURES
+
+* AI chatbot assistant support
+* AI smart reply suggestions
+* Scheduled reminders
+* PWA support
+* Installable desktop-like experience
+* Multi-language support
+* Theme customization
+* Chat wallpapers
+* QR code login
+* Export chats
+* Import contacts
+* Voice typing
+* AI moderation hooks
+* Spam detection hooks
+
+====================================================
+DELIVERABLES REQUIRED
+=====================
+
+Generate:
+
+1. Full frontend code
+2. Full backend code
+3. Database models
+4. API routes
+5. WebSocket implementation
+6. Admin dashboard
+7. Authentication system
+8. Docker configuration
+9. Environment configuration
+10. Setup instructions
+11. Database migrations
+12. Seed scripts
+13. Production-ready architecture
+14. Clean reusable components
+15. Beautiful UI screens
+
+====================================================
+IMPORTANT DEVELOPMENT RULES
+===========================
+
+* Use professional enterprise coding standards
+* Use reusable components
+* Use scalable folder structures
+* Use TypeScript strictly
+* Avoid dummy simplistic UI
+* Create realistic production-quality application
+* Add loading states everywhere
+* Add proper validation
+* Add empty states
+* Add proper error handling
+* Add comments only where necessary
+* Create polished UI
+* Make the application visually impressive
+* Ensure all modules are interconnected
+* Make it extensible for future microservices conversion
+
+====================================================
+FINAL GOAL
+==========
+
+The final output should look and behave like a real-world premium communication platform ready for SaaS deployment and commercial scaling, not a demo or beginner project.
+
+Generate the project step-by-step with complete file structures and implementations.

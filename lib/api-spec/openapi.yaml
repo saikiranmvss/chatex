@@ -3,20 +3,36 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Nexus Chat Platform API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication
+  - name: users
+    description: User management
+  - name: conversations
+    description: Conversations (direct + groups)
+  - name: messages
+    description: Messages
+  - name: groups
+    description: Group management
+  - name: channels
+    description: Broadcast channels
+  - name: notifications
+    description: Notifications
+  - name: admin
+    description: Admin panel
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +40,1195 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ─── AUTH ───────────────────────────────────────────────────────────
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterInput"
+      responses:
+        "201":
+          description: Registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout
+      responses:
+        "204":
+          description: Logged out
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+    patch:
+      operationId: updateMe
+      tags: [auth]
+      summary: Update current user profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserUpdate"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /auth/change-password:
+    post:
+      operationId: changePassword
+      tags: [auth]
+      summary: Change password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordInput"
+      responses:
+        "204":
+          description: Password changed
+
+  # ─── USERS ──────────────────────────────────────────────────────────
+  /users:
+    get:
+      operationId: searchUsers
+      tags: [users]
+      summary: Search users
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: User list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+
+  /users/{userId}:
+    get:
+      operationId: getUser
+      tags: [users]
+      summary: Get user profile
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: User
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /users/{userId}/block:
+    post:
+      operationId: blockUser
+      tags: [users]
+      summary: Block a user
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Blocked
+
+  /users/{userId}/unblock:
+    post:
+      operationId: unblockUser
+      tags: [users]
+      summary: Unblock a user
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Unblocked
+
+  # ─── CONVERSATIONS ───────────────────────────────────────────────────
+  /conversations:
+    get:
+      operationId: listConversations
+      tags: [conversations]
+      summary: List all conversations for current user
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [direct, group, channel, archived]
+      responses:
+        "200":
+          description: Conversations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Conversation"
+    post:
+      operationId: createConversation
+      tags: [conversations]
+      summary: Start a direct conversation or create a group
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConversationInput"
+      responses:
+        "201":
+          description: Conversation created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conversation"
+
+  /conversations/{conversationId}:
+    get:
+      operationId: getConversation
+      tags: [conversations]
+      summary: Get conversation details
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conversation"
+    patch:
+      operationId: updateConversation
+      tags: [conversations]
+      summary: Update conversation (mute, archive, pin)
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConversationUpdate"
+      responses:
+        "200":
+          description: Updated conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conversation"
+
+  /conversations/{conversationId}/archive:
+    post:
+      operationId: archiveConversation
+      tags: [conversations]
+      summary: Archive a conversation
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Archived
+
+  /conversations/{conversationId}/read:
+    post:
+      operationId: markConversationRead
+      tags: [conversations]
+      summary: Mark all messages in conversation as read
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Marked read
+
+  # ─── MESSAGES ───────────────────────────────────────────────────────
+  /conversations/{conversationId}/messages:
+    get:
+      operationId: listMessages
+      tags: [messages]
+      summary: List messages in a conversation
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Message"
+    post:
+      operationId: sendMessage
+      tags: [messages]
+      summary: Send a message
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageInput"
+      responses:
+        "201":
+          description: Sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+
+  /messages/{messageId}:
+    get:
+      operationId: getMessage
+      tags: [messages]
+      summary: Get a single message
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Message
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+    patch:
+      operationId: editMessage
+      tags: [messages]
+      summary: Edit a message
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageEdit"
+      responses:
+        "200":
+          description: Edited message
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+    delete:
+      operationId: deleteMessage
+      tags: [messages]
+      summary: Delete a message
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /messages/{messageId}/react:
+    post:
+      operationId: reactToMessage
+      tags: [messages]
+      summary: Add or remove an emoji reaction
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReactionInput"
+      responses:
+        "200":
+          description: Updated reactions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+
+  /messages/{messageId}/pin:
+    post:
+      operationId: pinMessage
+      tags: [messages]
+      summary: Pin a message
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Pinned
+
+  /messages/{messageId}/star:
+    post:
+      operationId: starMessage
+      tags: [messages]
+      summary: Star or unstar a message
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Starred
+
+  /messages/starred:
+    get:
+      operationId: listStarredMessages
+      tags: [messages]
+      summary: List starred messages for current user
+      responses:
+        "200":
+          description: Starred messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Message"
+
+  # ─── GROUPS ─────────────────────────────────────────────────────────
+  /groups/{groupId}/members:
+    get:
+      operationId: listGroupMembers
+      tags: [groups]
+      summary: List members of a group
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Members
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GroupMember"
+    post:
+      operationId: addGroupMember
+      tags: [groups]
+      summary: Add a member to a group
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GroupMemberInput"
+      responses:
+        "201":
+          description: Added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupMember"
+
+  /groups/{groupId}/members/{userId}:
+    delete:
+      operationId: removeGroupMember
+      tags: [groups]
+      summary: Remove a member from a group
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Removed
+
+  /groups/{groupId}/members/{userId}/role:
+    patch:
+      operationId: updateGroupMemberRole
+      tags: [groups]
+      summary: Update a member role in a group
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GroupRoleUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupMember"
+
+  # ─── CHANNELS ────────────────────────────────────────────────────────
+  /channels:
+    get:
+      operationId: listChannels
+      tags: [channels]
+      summary: List public broadcast channels
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Channels
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Channel"
+    post:
+      operationId: createChannel
+      tags: [channels]
+      summary: Create a broadcast channel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChannelInput"
+      responses:
+        "201":
+          description: Channel created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Channel"
+
+  /channels/{channelId}:
+    get:
+      operationId: getChannel
+      tags: [channels]
+      summary: Get channel details
+      parameters:
+        - name: channelId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Channel
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Channel"
+
+  /channels/{channelId}/subscribe:
+    post:
+      operationId: subscribeChannel
+      tags: [channels]
+      summary: Subscribe to a channel
+      parameters:
+        - name: channelId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Subscribed
+
+  /channels/{channelId}/unsubscribe:
+    post:
+      operationId: unsubscribeChannel
+      tags: [channels]
+      summary: Unsubscribe from a channel
+      parameters:
+        - name: channelId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Unsubscribed
+
+  # ─── NOTIFICATIONS ───────────────────────────────────────────────────
+  /notifications:
+    get:
+      operationId: listNotifications
+      tags: [notifications]
+      summary: List notifications
+      parameters:
+        - name: unreadOnly
+          in: query
+          schema:
+            type: boolean
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 30
+      responses:
+        "200":
+          description: Notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notification"
+
+  /notifications/read-all:
+    post:
+      operationId: markAllNotificationsRead
+      tags: [notifications]
+      summary: Mark all notifications as read
+      responses:
+        "204":
+          description: Marked read
+
+  # ─── ADMIN ──────────────────────────────────────────────────────────
+  /admin/stats:
+    get:
+      operationId: getAdminStats
+      tags: [admin]
+      summary: Platform-wide stats for admin dashboard
+      responses:
+        "200":
+          description: Stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminStats"
+
+  /admin/users:
+    get:
+      operationId: listAdminUsers
+      tags: [admin]
+      summary: List all users (admin)
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, suspended, banned]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminUser"
+
+  /admin/users/{userId}/suspend:
+    post:
+      operationId: suspendUser
+      tags: [admin]
+      summary: Suspend a user
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Suspended
+
+  /admin/users/{userId}/ban:
+    post:
+      operationId: banUser
+      tags: [admin]
+      summary: Ban a user
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Banned
+
+  /admin/users/{userId}/activate:
+    post:
+      operationId: activateUser
+      tags: [admin]
+      summary: Activate a user account
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Activated
+
+  /admin/reports:
+    get:
+      operationId: listReports
+      tags: [admin]
+      summary: List user and content reports
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, resolved, dismissed]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 30
+      responses:
+        "200":
+          description: Reports
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Report"
+
+  /admin/broadcast:
+    post:
+      operationId: adminBroadcast
+      tags: [admin]
+      summary: Send platform-wide announcement
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnnouncementInput"
+      responses:
+        "204":
+          description: Sent
+
+  /admin/settings:
+    get:
+      operationId: getAdminSettings
+      tags: [admin]
+      summary: Get platform settings
+      responses:
+        "200":
+          description: Settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlatformSettings"
+    patch:
+      operationId: updateAdminSettings
+      tags: [admin]
+      summary: Update platform settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlatformSettingsUpdate"
+      responses:
+        "200":
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlatformSettings"
+
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [conversations]
+      summary: Dashboard summary with unread counts and recent activity
+      responses:
+        "200":
+          description: Summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
 components:
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
         status:
           type: string
-      required:
-        - status
 
+    # ─── AUTH ────────────────────────────────────────────────────────
+    RegisterInput:
+      type: object
+      required: [username, email, password]
+      properties:
+        username:    { type: string, minLength: 2 }
+        email:       { type: string, format: email }
+        password:    { type: string, minLength: 8 }
+        displayName: { type: string }
+
+    LoginInput:
+      type: object
+      required: [email, password]
+      properties:
+        email:    { type: string }
+        password: { type: string }
+
+    AuthResponse:
+      type: object
+      required: [token, user]
+      properties:
+        token: { type: string }
+        user:
+          $ref: "#/components/schemas/User"
+
+    ChangePasswordInput:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword: { type: string }
+        newPassword:     { type: string, minLength: 8 }
+
+    # ─── USERS ───────────────────────────────────────────────────────
+    User:
+      type: object
+      required: [id, username, email, displayName, status, role, createdAt]
+      properties:
+        id:          { type: integer }
+        username:    { type: string }
+        email:       { type: string }
+        displayName: { type: string }
+        avatarUrl:   { type: ["string", "null"] }
+        bio:         { type: ["string", "null"] }
+        status:      { type: string, enum: [active, suspended, banned] }
+        presence:    { type: string, enum: [online, away, offline] }
+        role:        { type: string, enum: [user, moderator, admin] }
+        isVerified:  { type: boolean }
+        lastSeenAt:  { type: ["string", "null"] }
+        createdAt:   { type: string }
+
+    UserUpdate:
+      type: object
+      properties:
+        displayName: { type: string }
+        bio:         { type: string }
+        avatarUrl:   { type: string }
+        presence:    { type: string, enum: [online, away, offline] }
+
+    # ─── CONVERSATIONS ───────────────────────────────────────────────
+    Conversation:
+      type: object
+      required: [id, type, createdAt]
+      properties:
+        id:              { type: integer }
+        type:            { type: string, enum: [direct, group, channel] }
+        name:            { type: ["string", "null"] }
+        description:     { type: ["string", "null"] }
+        avatarUrl:       { type: ["string", "null"] }
+        isArchived:      { type: boolean }
+        isMuted:         { type: boolean }
+        isPinned:        { type: boolean }
+        unreadCount:     { type: integer }
+        memberCount:     { type: integer }
+        lastMessage:
+          $ref: "#/components/schemas/MessagePreview"
+        otherUser:
+          $ref: "#/components/schemas/User"
+        createdAt:       { type: string }
+        updatedAt:       { type: string }
+
+    ConversationInput:
+      type: object
+      required: [type]
+      properties:
+        type:         { type: string, enum: [direct, group, channel] }
+        targetUserId: { type: integer }
+        name:         { type: string }
+        description:  { type: string }
+        avatarUrl:    { type: string }
+        memberIds:
+          type: array
+          items: { type: integer }
+
+    ConversationUpdate:
+      type: object
+      properties:
+        name:        { type: string }
+        description: { type: string }
+        avatarUrl:   { type: string }
+        isMuted:     { type: boolean }
+        isPinned:    { type: boolean }
+        isArchived:  { type: boolean }
+
+    # ─── MESSAGES ────────────────────────────────────────────────────
+    Message:
+      type: object
+      required: [id, conversationId, senderId, content, type, status, createdAt]
+      properties:
+        id:             { type: integer }
+        conversationId: { type: integer }
+        senderId:       { type: integer }
+        sender:
+          $ref: "#/components/schemas/User"
+        content:        { type: string }
+        type:           { type: string, enum: [text, image, video, audio, file, sticker, gif, system] }
+        status:         { type: string, enum: [sending, sent, delivered, seen] }
+        replyToId:      { type: ["integer", "null"] }
+        replyTo:
+          $ref: "#/components/schemas/MessagePreview"
+        mediaUrl:       { type: ["string", "null"] }
+        mediaType:      { type: ["string", "null"] }
+        mediaSize:      { type: ["integer", "null"] }
+        mediaName:      { type: ["string", "null"] }
+        isEdited:       { type: boolean }
+        isPinned:       { type: boolean }
+        isStarred:      { type: boolean }
+        isDeleted:      { type: boolean }
+        reactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Reaction"
+        createdAt:      { type: string }
+        editedAt:       { type: ["string", "null"] }
+
+    MessagePreview:
+      type: object
+      required: [id, content, type, senderId]
+      properties:
+        id:         { type: integer }
+        content:    { type: string }
+        type:       { type: string }
+        senderId:   { type: integer }
+        senderName: { type: string }
+
+    MessageInput:
+      type: object
+      required: [content, type]
+      properties:
+        content:   { type: string }
+        type:      { type: string, enum: [text, image, video, audio, file, sticker, gif] }
+        replyToId: { type: integer }
+        mediaUrl:  { type: string }
+        mediaType: { type: string }
+        mediaSize: { type: integer }
+        mediaName: { type: string }
+
+    MessageEdit:
+      type: object
+      required: [content]
+      properties:
+        content: { type: string }
+
+    ReactionInput:
+      type: object
+      required: [emoji]
+      properties:
+        emoji: { type: string }
+
+    Reaction:
+      type: object
+      required: [emoji, count, userIds]
+      properties:
+        emoji:   { type: string }
+        count:   { type: integer }
+        userIds:
+          type: array
+          items: { type: integer }
+
+    # ─── GROUPS ──────────────────────────────────────────────────────
+    GroupMember:
+      type: object
+      required: [userId, role, joinedAt]
+      properties:
+        userId:   { type: integer }
+        user:
+          $ref: "#/components/schemas/User"
+        role:     { type: string, enum: [owner, admin, moderator, member] }
+        joinedAt: { type: string }
+
+    GroupMemberInput:
+      type: object
+      required: [userId]
+      properties:
+        userId: { type: integer }
+        role:   { type: string, enum: [admin, moderator, member] }
+
+    GroupRoleUpdate:
+      type: object
+      required: [role]
+      properties:
+        role: { type: string, enum: [admin, moderator, member] }
+
+    # ─── CHANNELS ────────────────────────────────────────────────────
+    Channel:
+      type: object
+      required: [id, name, createdAt]
+      properties:
+        id:              { type: integer }
+        name:            { type: string }
+        description:     { type: ["string", "null"] }
+        avatarUrl:       { type: ["string", "null"] }
+        subscriberCount: { type: integer }
+        isSubscribed:    { type: boolean }
+        isPublic:        { type: boolean }
+        ownerId:         { type: integer }
+        createdAt:       { type: string }
+
+    ChannelInput:
+      type: object
+      required: [name]
+      properties:
+        name:        { type: string, minLength: 2 }
+        description: { type: string }
+        avatarUrl:   { type: string }
+        isPublic:    { type: boolean }
+
+    # ─── NOTIFICATIONS ───────────────────────────────────────────────
+    Notification:
+      type: object
+      required: [id, type, isRead, createdAt]
+      properties:
+        id:            { type: integer }
+        type:          { type: string, enum: [message, mention, group_invite, channel_broadcast, system] }
+        title:         { type: string }
+        body:          { type: string }
+        isRead:        { type: boolean }
+        referenceId:   { type: ["integer", "null"] }
+        referenceType: { type: ["string", "null"] }
+        actorUser:
+          $ref: "#/components/schemas/User"
+        createdAt:     { type: string }
+
+    # ─── ADMIN ───────────────────────────────────────────────────────
+    AdminStats:
+      type: object
+      required: [totalUsers, activeUsers, totalMessages, totalGroups, totalChannels, newUsersToday, messagesLast24h, storageUsedMb]
+      properties:
+        totalUsers:      { type: integer }
+        activeUsers:     { type: integer }
+        totalMessages:   { type: integer }
+        totalGroups:     { type: integer }
+        totalChannels:   { type: integer }
+        newUsersToday:   { type: integer }
+        messagesLast24h: { type: integer }
+        storageUsedMb:   { type: number }
+
+    AdminUser:
+      type: object
+      required: [id, username, email, displayName, status, role, createdAt]
+      properties:
+        id:           { type: integer }
+        username:     { type: string }
+        email:        { type: string }
+        displayName:  { type: string }
+        avatarUrl:    { type: ["string", "null"] }
+        status:       { type: string, enum: [active, suspended, banned] }
+        role:         { type: string, enum: [user, moderator, admin] }
+        messageCount: { type: integer }
+        lastSeenAt:   { type: ["string", "null"] }
+        createdAt:    { type: string }
+
+    Report:
+      type: object
+      required: [id, reporterId, reason, status, createdAt]
+      properties:
+        id:           { type: integer }
+        reporterId:   { type: integer }
+        reporter:
+          $ref: "#/components/schemas/User"
+        targetUserId: { type: ["integer", "null"] }
+        targetUser:
+          $ref: "#/components/schemas/User"
+        messageId:    { type: ["integer", "null"] }
+        reason:       { type: string }
+        description:  { type: ["string", "null"] }
+        status:       { type: string, enum: [pending, resolved, dismissed] }
+        createdAt:    { type: string }
+
+    AnnouncementInput:
+      type: object
+      required: [title, body]
+      properties:
+        title: { type: string }
+        body:  { type: string }
+
+    PlatformSettings:
+      type: object
+      required: [emailRegistration, maintenanceMode]
+      properties:
+        emailRegistration:  { type: boolean }
+        maintenanceMode:    { type: boolean }
+        maxFileUploadMb:    { type: integer }
+        allowGuestBrowse:   { type: boolean }
+        requireEmailVerify: { type: boolean }
+
+    PlatformSettingsUpdate:
+      type: object
+      properties:
+        emailRegistration:  { type: boolean }
+        maintenanceMode:    { type: boolean }
+        maxFileUploadMb:    { type: integer }
+        allowGuestBrowse:   { type: boolean }
+        requireEmailVerify: { type: boolean }
+
+    DashboardSummary:
+      type: object
+      required: [totalUnread, pinnedConversations, recentConversations, onlineContacts]
+      properties:
+        totalUnread:         { type: integer }
+        pinnedConversations: { type: integer }
+        recentConversations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Conversation"
+        onlineContacts:
+          type: array
+          items:
+            $ref: "#/components/schemas/User"
