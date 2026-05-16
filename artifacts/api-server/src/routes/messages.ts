@@ -1,9 +1,10 @@
 import { Router, type IRouter } from "express";
-import { eq, and, desc, lt } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { db, usersTable, messagesTable, conversationMembersTable, starredMessagesTable } from "@workspace/db";
 import { SendMessageBody, EditMessageBody, ReactToMessageBody } from "@workspace/api-zod";
 import { requireAuth, getUser } from "../lib/auth";
 import { sanitizeUser } from "./auth";
+import { broadcast } from "../lib/ws-server";
 
 const router: IRouter = Router();
 
@@ -117,8 +118,11 @@ router.post("/conversations/:conversationId/messages", requireAuth, async (req, 
     .set({ unreadCount: 0 })
     .where(and(eq(conversationMembersTable.conversationId, conversationId), eq(conversationMembersTable.userId, userId)));
 
-  const result = await buildMessage(msg, userId, new Set());
-  res.status(201).json(result);
+  const msgData = await buildMessage(msg, userId, new Set());
+  res.status(201).json(msgData);
+
+  // Broadcast to all conversation members via WebSocket
+  broadcast(conversationId, { type: "message:new", payload: msgData as Record<string, unknown> });
 });
 
 router.get("/messages/starred", requireAuth, async (req, res): Promise<void> => {
@@ -178,7 +182,10 @@ router.patch("/messages/:messageId", requireAuth, async (req, res): Promise<void
 
   const starred = await db.select().from(starredMessagesTable).where(eq(starredMessagesTable.userId, userId));
   const starredSet = new Set(starred.map(s => s.messageId));
-  res.json(await buildMessage(updated, userId, starredSet));
+  const msgData = await buildMessage(updated, userId, starredSet);
+  res.json(msgData);
+
+  broadcast(msg.conversationId, { type: "message:edit", payload: msgData as Record<string, unknown> });
 });
 
 router.delete("/messages/:messageId", requireAuth, async (req, res): Promise<void> => {
@@ -195,6 +202,8 @@ router.delete("/messages/:messageId", requireAuth, async (req, res): Promise<voi
   await db.update(messagesTable).set({ isDeleted: true, content: "This message was deleted" })
     .where(eq(messagesTable.id, messageId));
   res.sendStatus(204);
+
+  broadcast(msg.conversationId, { type: "message:delete", payload: { messageId, conversationId: msg.conversationId } });
 });
 
 router.post("/messages/:messageId/react", requireAuth, async (req, res): Promise<void> => {
@@ -239,7 +248,10 @@ router.post("/messages/:messageId/react", requireAuth, async (req, res): Promise
   const [updated] = await db.select().from(messagesTable).where(eq(messagesTable.id, messageId)).limit(1);
   const starred = await db.select().from(starredMessagesTable).where(eq(starredMessagesTable.userId, userId));
   const starredSet = new Set(starred.map(s => s.messageId));
-  res.json(await buildMessage(updated, userId, starredSet));
+  const msgData = await buildMessage(updated, userId, starredSet);
+  res.json(msgData);
+
+  broadcast(msg.conversationId, { type: "message:edit", payload: msgData as Record<string, unknown> });
 });
 
 router.post("/messages/:messageId/pin", requireAuth, async (req, res): Promise<void> => {
