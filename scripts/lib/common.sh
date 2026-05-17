@@ -156,9 +156,10 @@ render_template() {
 
 ensure_cloudteor_http_server() {
   mkdir -p /etc/nginx/cloudteor-apps
-  local redirects="/etc/nginx/cloudteor-apps/ip-redirects.conf"
-  if [[ -f "${LIB_DIR}/../templates/nginx-ip-redirects.conf" ]]; then
-    cp "${LIB_DIR}/../templates/nginx-ip-redirects.conf" "${redirects}"
+  local redirects="/etc/nginx/cloudteor-apps/00-ip-redirects.conf"
+  rm -f /etc/nginx/cloudteor-apps/ip-redirects.conf
+  if [[ -f "${LIB_DIR}/../templates/00-ip-redirects.conf" ]]; then
+    cp "${LIB_DIR}/../templates/00-ip-redirects.conf" "${redirects}"
   fi
   local master="/etc/nginx/sites-available/cloudteor-http"
   cp "${LIB_DIR}/../templates/nginx-cloudteor-http.conf" "${master}"
