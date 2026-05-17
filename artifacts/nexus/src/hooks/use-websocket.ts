@@ -56,7 +56,9 @@ export function useWebSocket({ onEvent }: UseWebSocketOptions = {}) {
 
     const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
     const host = window.location.host;
-    const url = `${proto}//${host}/api/ws?token=${encodeURIComponent(token)}`;
+    const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+    const path = `${base}/api/ws`.replace(/\/+/g, "/");
+    const url = `${proto}//${host}${path}?token=${encodeURIComponent(token)}`;
 
     const ws = new WebSocket(url);
     wsRef.current = ws;

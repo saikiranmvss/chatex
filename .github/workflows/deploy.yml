@@ -1,0 +1,136 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main, production]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.repository }}
+  cancel-in-progress: false
+
+env:
+  APP_NAME: chatex
+  APP_PORT: "5100"
+  NODE_VERSION: "24"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck and build
+        env:
+          BASE_PATH: ${{ secrets.APP_BASE_PATH || '/chatex/' }}
+          PORT: ${{ env.APP_PORT }}
+          NODE_ENV: production
+        run: |
+          pnpm run typecheck
+          pnpm --filter @workspace/nexus run build
+          pnpm --filter @workspace/api-server run build
+
+      - name: Create deployment artifact
+        run: |
+          TS=$(date -u +%Y%m%d_%H%M%S)
+          ARTIFACT="chatex-${GITHUB_SHA::7}-${TS}.tar.gz"
+          tar -czf "${ARTIFACT}" \
+            --exclude=node_modules \
+            --exclude=.git \
+            package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json tsconfig.base.json \
+            artifacts lib scripts
+          echo "ARTIFACT=${ARTIFACT}" >> "$GITHUB_ENV"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deploy-artifact
+          path: chatex-*.tar.gz
+          retention-days: 7
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: deploy-artifact
+
+      - name: Locate artifact
+        run: echo "ARTIFACT=$(ls chatex-*.tar.gz | head -1)" >> "$GITHUB_ENV"
+
+      - name: Prepare SSH
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p "${{ secrets.SERVER_PORT || 22 }}" -H "${{ secrets.SERVER_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Upload artifact and scripts
+        run: |
+          scp -i ~/.ssh/deploy_key -P "${{ secrets.SERVER_PORT || 22 }}" \
+            "${ARTIFACT}" \
+            "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/tmp/${ARTIFACT}"
+          tar -czf /tmp/deploy-scripts.tar.gz -C scripts .
+          scp -i ~/.ssh/deploy_key -P "${{ secrets.SERVER_PORT || 22 }}" \
+            /tmp/deploy-scripts.tar.gz \
+            "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/tmp/deploy-scripts-${APP_NAME}.tar.gz"
+
+      - name: Write production .env on server
+        if: ${{ secrets.ENV_FILE != '' }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -p "${{ secrets.SERVER_PORT || 22 }}" \
+            "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" \
+            "sudo mkdir -p /var/www/${{ env.APP_NAME }}/shared"
+          printf '%s' "${{ secrets.ENV_FILE }}" | ssh -i ~/.ssh/deploy_key -p "${{ secrets.SERVER_PORT || 22 }}" \
+            "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" \
+            "sudo tee /var/www/${{ env.APP_NAME }}/shared/.env > /dev/null && sudo chmod 600 /var/www/${{ env.APP_NAME }}/shared/.env && sudo chown ${{ secrets.SERVER_USER }}:${{ secrets.SERVER_USER }} /var/www/${{ env.APP_NAME }}/shared/.env"
+
+      - name: Provision server and deploy (fully automated)
+        env:
+          APP_BASE_PATH: ${{ secrets.APP_BASE_PATH }}
+          APP_DOMAIN: ${{ secrets.APP_DOMAIN }}
+          APP_SUBDOMAIN: ${{ secrets.APP_SUBDOMAIN }}
+          SERVER_BASE_DOMAIN: ${{ secrets.SERVER_BASE_DOMAIN }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          MIGRATE_ON_DEPLOY: ${{ secrets.MIGRATE_ON_DEPLOY || 'true' }}
+          RELEASES_TO_KEEP: ${{ secrets.RELEASES_TO_KEEP || '5' }}
+          SSL_EMAIL: ${{ secrets.SSL_EMAIL }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -p "${{ secrets.SERVER_PORT || 22 }}" \
+            "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" \
+            "set -euo pipefail
+             sudo mkdir -p /var/www/${{ env.APP_NAME }}/scripts
+             sudo tar -xzf /tmp/deploy-scripts-${{ env.APP_NAME }}.tar.gz -C /var/www/${{ env.APP_NAME }}/scripts
+             sudo chmod +x /var/www/${{ env.APP_NAME }}/scripts/*.sh /var/www/${{ env.APP_NAME }}/scripts/lib/*.sh 2>/dev/null || true
+             sudo APP_NAME='${{ env.APP_NAME }}' APP_PORT='${{ env.APP_PORT }}' \
+               APP_BASE_PATH='${APP_BASE_PATH}' APP_DOMAIN='${APP_DOMAIN}' \
+               APP_SUBDOMAIN='${APP_SUBDOMAIN}' SERVER_BASE_DOMAIN='${SERVER_BASE_DOMAIN}' \
+               DB_PASSWORD='${DB_PASSWORD}' DB_NAME='${DB_NAME}' DB_USER='${DB_USER}' \
+               MIGRATE_ON_DEPLOY='${MIGRATE_ON_DEPLOY}' RELEASES_TO_KEEP='${RELEASES_TO_KEEP}' \
+               SSL_EMAIL='${SSL_EMAIL}' DEPLOY_USER='deploy' \
+               bash /var/www/${{ env.APP_NAME }}/scripts/ci-provision-and-deploy.sh /tmp/${ARTIFACT}"
+
+      - name: Deployment summary
+        run: |
+          {
+            echo "### Deployment complete (provision + deploy)"
+            echo "- App: ${{ env.APP_NAME }}"
+            echo "- URL: http://${{ secrets.SERVER_HOST }}/${{ env.APP_NAME }}/"
+            echo "- Artifact: ${ARTIFACT}"
+          } >> "$GITHUB_STEP_SUMMARY"
