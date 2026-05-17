@@ -11,8 +11,10 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import {
   getListConversationsQueryKey,
+  getListConversationsQueryOptions,
   getListMessagesQueryKey,
   getListNotificationsQueryKey,
+  getListNotificationsQueryOptions,
   listMessages,
   useListConversations,
   useListNotifications,
@@ -21,6 +23,7 @@ import {
   type Notification,
   type UserPresence,
 } from "@workspace/api-client-react";
+import { parseWsMessage, parseWsNotification } from "@/lib/ws-payload";
 import { useWebSocket, type WsEvent, type PresenceUpdatePayload } from "@/hooks/use-websocket";
 import { useAuth } from "@/hooks/use-auth";
 import { useBrowserNotify } from "@/hooks/use-browser-notify";
@@ -92,8 +95,8 @@ function handleRealtimeMessageEvent(
   options: { currentUserId?: number; activeConversationId?: number | null },
 ) {
   if (event.type === "message:new" || event.type === "message:edit") {
-    const msg = event.payload as Message;
-    if (!msg?.id || !msg.conversationId) return;
+    const msg = parseWsMessage(event.payload);
+    if (!msg) return;
     upsertMessageInCache(queryClient, msg);
     if (event.type === "message:new") {
       patchConversationFromMessage(queryClient, msg, options);
@@ -121,16 +124,18 @@ export function ChatWebSocketProvider({ children }: { children: ReactNode }) {
   const [typingVersion, setTypingVersion] = useState(0);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
 
-  const { data: conversations } = useListConversations({
+  const { data: conversations } = useListConversations(undefined, {
     query: {
+      ...getListConversationsQueryOptions(),
       enabled: !!user?.id,
       refetchInterval: 45_000,
       refetchOnWindowFocus: true,
     },
   });
 
-  useListNotifications({
+  useListNotifications(undefined, {
     query: {
+      ...getListNotificationsQueryOptions(),
       enabled: !!user?.id,
       refetchInterval: 60_000,
       refetchOnWindowFocus: true,
@@ -248,7 +253,7 @@ export function ChatWebSocketProvider({ children }: { children: ReactNode }) {
       });
 
       if (event.type === "message:new") {
-        const msg = event.payload as Message;
+        const msg = parseWsMessage(event.payload);
         if (msg?.conversationId && msg.senderId) {
           setTyping(msg.conversationId, { userId: msg.senderId, displayName: "" }, false);
         }
@@ -261,7 +266,8 @@ export function ChatWebSocketProvider({ children }: { children: ReactNode }) {
       }
 
       if (event.type === "notification:new") {
-        const n = event.payload as Notification;
+        const n = parseWsNotification(event.payload);
+        if (n) {
         queryClient.setQueryData<Notification[]>(getListNotificationsQueryKey(), (old) => {
           if (!old) return [n];
           if (old.some((x) => x.id === n.id)) return old;
@@ -290,8 +296,8 @@ export function ChatWebSocketProvider({ children }: { children: ReactNode }) {
         const isViewingThisChat =
           convId != null && activeConvRef.current === convId;
 
-        showNotification(n.title, {
-          body: n.body,
+        showNotification(n.title ?? "Nexus", {
+          body: n.body ?? "",
           tag: `conv-${convId ?? n.id}`,
           skipWhenVisible: isViewingThisChat,
           onClick: () => {
@@ -300,6 +306,7 @@ export function ChatWebSocketProvider({ children }: { children: ReactNode }) {
             }
           },
         });
+        }
       }
 
       handlersRef.current.forEach((handler) => handler(event));

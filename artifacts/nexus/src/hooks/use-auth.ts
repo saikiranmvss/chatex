@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useLocation } from "wouter";
-import { useGetMe } from "@workspace/api-client-react";
+import { useGetMe, getGetMeQueryOptions } from "@workspace/api-client-react";
 
 export function useAuth() {
   const [location, setLocation] = useLocation();
@@ -8,9 +8,10 @@ export function useAuth() {
   
   const { data: user, isLoading, error } = useGetMe({
     query: {
+      ...getGetMeQueryOptions(),
       enabled: !!token,
       retry: false,
-    }
+    },
   });
 
   useEffect(() => {

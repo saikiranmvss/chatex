@@ -3,6 +3,7 @@ import {
   useCreateConversation,
   useSearchUsers,
   getListConversationsQueryKey,
+  getSearchUsersQueryOptions,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
@@ -36,10 +37,13 @@ export function NewConversationDialog({ onConversationCreated }: NewConversation
   const [groupName, setGroupName] = useState("");
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
-  const { data: searchResults } = useSearchUsers(
-    { q: userSearch, limit: 12 },
-    { query: { enabled: userSearch.length > 1 } },
-  );
+  const searchParams = { q: userSearch, limit: 12 };
+  const { data: searchResults } = useSearchUsers(searchParams, {
+    query: {
+      ...getSearchUsersQueryOptions(searchParams),
+      enabled: userSearch.length > 1,
+    },
+  });
 
   const reset = () => {
     setUserSearch("");
