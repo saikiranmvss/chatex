@@ -10,10 +10,8 @@ source "${SCRIPTS_ROOT}/lib/common.sh"
 ARTIFACT="${1:-}"
 [[ -n "${ARTIFACT}" && -f "${ARTIFACT}" ]] || die "Usage: $0 <artifact.tar.gz>"
 
-resolve_app_name
 resolve_deploy_mode
-mkdir -p "${SHARED_DIR}/logs"
-exec >>"${DEPLOY_LOG}" 2>&1
+begin_deploy_logging
 
 PREVIOUS_RELEASE=""
 if [[ -L "${CURRENT_LINK}" ]]; then

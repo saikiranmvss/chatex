@@ -132,6 +132,7 @@ jobs:
                DB_PASSWORD='${DB_PASSWORD}' DB_NAME='${DB_NAME}' DB_USER='${DB_USER}' \
                MIGRATE_ON_DEPLOY='${MIGRATE_ON_DEPLOY}' RELEASES_TO_KEEP='${RELEASES_TO_KEEP}' \
                SSL_EMAIL='${SSL_EMAIL}' DEPLOY_USER='deploy' \
+               DEPLOY_LOG_TO_STDOUT='true' \
                bash /var/www/${{ env.APP_NAME }}/scripts/ci-provision-and-deploy.sh /tmp/${ARTIFACT}"
 
       - name: Deployment summary

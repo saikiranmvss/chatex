@@ -13,4 +13,7 @@ require_root_or_sudo
 
 log "=== CI: provision + deploy for ${APP_NAME:-app} ==="
 bash "${SCRIPTS_ROOT}/create_server.sh"
-bash "${SCRIPTS_ROOT}/deploy.sh" "${ARTIFACT}"
+if ! bash "${SCRIPTS_ROOT}/deploy.sh" "${ARTIFACT}"; then
+  tail_deploy_logs_on_failure
+  exit 1
+fi

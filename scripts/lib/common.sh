@@ -111,6 +111,27 @@ release_deploy_lock() {
   flock -u 200 2>/dev/null || true
 }
 
+# Send deploy output to deploy.log; mirror to stdout when DEPLOY_LOG_TO_STDOUT=true (CI).
+begin_deploy_logging() {
+  resolve_app_name
+  mkdir -p "${SHARED_DIR}/logs"
+  if [[ "${DEPLOY_LOG_TO_STDOUT:-false}" == "true" ]]; then
+    exec > >(tee -a "${DEPLOY_LOG}") 2>&1
+  else
+    exec >>"${DEPLOY_LOG}" 2>&1
+  fi
+}
+
+tail_deploy_logs_on_failure() {
+  resolve_app_name
+  log "=== Deploy failed — last lines of deploy.log ==="
+  tail -n 80 "${DEPLOY_LOG}" 2>/dev/null || true
+  if [[ -f "${SHARED_DIR}/logs/api-error.log" ]]; then
+    log "=== api-error.log ==="
+    tail -n 40 "${SHARED_DIR}/logs/api-error.log" 2>/dev/null || true
+  fi
+}
+
 write_env_file() {
   if [[ -n "${ENV_FILE:-}" ]]; then
     log "Writing shared/.env from ENV_FILE secret"
