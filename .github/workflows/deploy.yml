@@ -90,7 +90,6 @@ jobs:
             "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/tmp/deploy-scripts-${APP_NAME}.tar.gz"
 
       - name: Write production .env on server
-        if: ${{ secrets.ENV_FILE != '' }}
         run: |
           ssh -i ~/.ssh/deploy_key -p "${{ secrets.SERVER_PORT || 22 }}" \
             "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" \
