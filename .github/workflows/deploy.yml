@@ -72,31 +72,40 @@ jobs:
       - name: Locate artifact
         run: echo "ARTIFACT=$(ls chatex-*.tar.gz | head -1)" >> "$GITHUB_ENV"
 
-      - name: Prepare SSH
+      - name: Start SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Trust server host key
         run: |
-          install -m 700 -d ~/.ssh
-          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -p "${{ secrets.SERVER_PORT || 22 }}" -H "${{ secrets.SERVER_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
+          mkdir -p ~/.ssh
+          ssh-keyscan -p "${{ secrets.SERVER_PORT || 22 }}" -H "${{ secrets.SERVER_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Test SSH connection
+        run: |
+          ssh -p "${{ secrets.SERVER_PORT || 22 }}" -o BatchMode=yes -o ConnectTimeout=15 \
+            "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" \
+            "whoami && test -w /tmp || test -x /usr/bin/sudo && echo ssh_ok"
 
       - name: Upload artifact and scripts
         run: |
-          scp -i ~/.ssh/deploy_key -P "${{ secrets.SERVER_PORT || 22 }}" \
+          scp -P "${{ secrets.SERVER_PORT || 22 }}" \
             "${ARTIFACT}" \
             "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/tmp/${ARTIFACT}"
           tar -czf /tmp/deploy-scripts.tar.gz -C scripts .
-          scp -i ~/.ssh/deploy_key -P "${{ secrets.SERVER_PORT || 22 }}" \
+          scp -P "${{ secrets.SERVER_PORT || 22 }}" \
             /tmp/deploy-scripts.tar.gz \
             "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/tmp/deploy-scripts-${APP_NAME}.tar.gz"
 
       - name: Write production .env on server
         run: |
-          ssh -i ~/.ssh/deploy_key -p "${{ secrets.SERVER_PORT || 22 }}" \
+          ssh -p "${{ secrets.SERVER_PORT || 22 }}" \
             "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" \
             "sudo mkdir -p /var/www/${{ env.APP_NAME }}/shared"
-          printf '%s' "${{ secrets.ENV_FILE }}" | ssh -i ~/.ssh/deploy_key -p "${{ secrets.SERVER_PORT || 22 }}" \
+          printf '%s' "${{ secrets.ENV_FILE }}" | ssh -p "${{ secrets.SERVER_PORT || 22 }}" \
             "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" \
-            "sudo tee /var/www/${{ env.APP_NAME }}/shared/.env > /dev/null && sudo chmod 600 /var/www/${{ env.APP_NAME }}/shared/.env && sudo chown ${{ secrets.SERVER_USER }}:${{ secrets.SERVER_USER }} /var/www/${{ env.APP_NAME }}/shared/.env"
+            "sudo tee /var/www/${{ env.APP_NAME }}/shared/.env > /dev/null && sudo chmod 600 /var/www/${{ env.APP_NAME }}/shared/.env && sudo chown deploy:deploy /var/www/${{ env.APP_NAME }}/shared/.env"
 
       - name: Provision server and deploy (fully automated)
         env:
@@ -111,7 +120,7 @@ jobs:
           RELEASES_TO_KEEP: ${{ secrets.RELEASES_TO_KEEP || '5' }}
           SSL_EMAIL: ${{ secrets.SSL_EMAIL }}
         run: |
-          ssh -i ~/.ssh/deploy_key -p "${{ secrets.SERVER_PORT || 22 }}" \
+          ssh -p "${{ secrets.SERVER_PORT || 22 }}" \
             "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" \
             "set -euo pipefail
              sudo mkdir -p /var/www/${{ env.APP_NAME }}/scripts

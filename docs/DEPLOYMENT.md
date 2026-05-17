@@ -32,6 +32,41 @@ users:
 
 - **Or** set GitHub secret `SERVER_USER` = `root` for the **first** deploy only (workflow will create `deploy` + passwordless sudo).
 
+### Fix `Permission denied (publickey)` on deploy
+
+GitHub must use the **private** key whose **public** key is on the server for `SERVER_USER`.
+
+1. **Secrets must be:**
+   - `SERVER_USER` = `deploy` (exact username on the server)
+   - `SERVER_HOST` = `195.201.148.243`
+   - `SSH_PRIVATE_KEY` = entire `server_key` file (including `BEGIN` / `END` lines)
+
+2. **On the server**, the matching public key must exist. From your PC:
+
+```powershell
+type d:\wamp64\www\cloudteor_apps\server_key.pub
+```
+
+Copy that one line, then on the server (DigitalOcean **Access → Launch Droplet Console** as root):
+
+```bash
+mkdir -p /home/deploy/.ssh
+chmod 700 /home/deploy/.ssh
+echo 'PASTE_THE_PUBLIC_KEY_LINE_HERE' >> /home/deploy/.ssh/authorized_keys
+chmod 600 /home/deploy/.ssh/authorized_keys
+chown -R deploy:deploy /home/deploy/.ssh
+```
+
+3. **Test from your PC** (must work before GitHub will work):
+
+```powershell
+ssh -i d:\wamp64\www\cloudteor_apps\server_key deploy@195.201.148.243
+```
+
+If this fails, GitHub will fail too.
+
+4. If only **root** has your key, set GitHub secret `SERVER_USER` = `root` temporarily.
+
 ### On GitHub (per repo)
 
 Repository → **Settings** → **Secrets and variables** → **Actions**:
