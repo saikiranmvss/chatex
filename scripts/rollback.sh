@@ -2,9 +2,9 @@
 # Roll back to the previous release.
 set -Eeuo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPTS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.sh
-source "${SCRIPT_DIR}/lib/common.sh"
+source "${SCRIPTS_ROOT}/lib/common.sh"
 
 resolve_app_name
 acquire_deploy_lock

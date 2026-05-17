@@ -3,9 +3,9 @@
 # Requires root or passwordless sudo (deploy user on DigitalOcean).
 set -Eeuo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPTS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.sh
-source "${SCRIPT_DIR}/lib/common.sh"
+source "${SCRIPTS_ROOT}/lib/common.sh"
 
 require_root_or_sudo
 
@@ -95,7 +95,7 @@ provision_database() {
 install_deploy_scripts() {
   local dest="${APP_HOME}/scripts"
   mkdir -p "${dest}"
-  cp -a "${SCRIPT_DIR}/." "${dest}/"
+  cp -a "${SCRIPTS_ROOT}/." "${dest}/"
   chown -R "${DEPLOY_USER}:${DEPLOY_USER}" "${dest}"
   chmod +x "${dest}"/*.sh "${dest}/lib/"*.sh 2>/dev/null || true
 }

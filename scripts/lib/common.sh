@@ -2,9 +2,9 @@
 # Shared deployment helpers — source from deploy/create_server/rollback/setup-ssl scripts.
 set -Eeuo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=app.conf
-source "${SCRIPT_DIR}/app.conf"
+source "${LIB_DIR}/app.conf"
 
 export DEBIAN_FRONTEND=noninteractive
 PROVISION_MARKER="/var/lib/cloudteor-provisioned"
@@ -21,8 +21,10 @@ require_root_or_sudo() {
     return 0
   fi
   if sudo -n true 2>/dev/null; then
-    log "Elevating to root via sudo"
-    exec sudo -E bash "$0" "$@"
+    # BASH_SOURCE[1] = caller script (create_server.sh, etc.); $0 is "bash" when run as `bash script.sh`
+    local script="${BASH_SOURCE[1]:-${BASH_SOURCE[0]}}"
+    log "Elevating to root via sudo (${script})"
+    exec sudo -E bash "${script}" "$@"
   fi
   die "Need root or passwordless sudo for provisioning. Add deploy to sudo (NOPASSWD) or set GitHub secret SERVER_USER=root for bootstrap."
 }
@@ -115,7 +117,7 @@ ensure_cloudteor_http_server() {
   mkdir -p /etc/nginx/cloudteor-apps
   local master="/etc/nginx/sites-available/cloudteor-http"
   if [[ ! -f "${master}" ]]; then
-    cp "${SCRIPT_DIR}/../templates/nginx-cloudteor-http.conf" "${master}"
+    cp "${LIB_DIR}/../templates/nginx-cloudteor-http.conf" "${master}"
     ln -sfn "${master}" /etc/nginx/sites-enabled/cloudteor-http
     rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
     log "Installed shared cloudteor-http nginx server block"
@@ -125,14 +127,14 @@ ensure_cloudteor_http_server() {
 render_nginx_config() {
   resolve_deploy_mode
   if [[ "${DEPLOY_MODE}" == "domain" ]]; then
-    local tpl="${SCRIPT_DIR}/../templates/nginx-domain.conf.tpl"
+    local tpl="${LIB_DIR}/../templates/nginx-domain.conf.tpl"
     local out="/etc/nginx/sites-available/${APP_NAME}"
     render_template "${tpl}" "${out}"
     ln -sfn "${out}" "/etc/nginx/sites-enabled/${APP_NAME}"
     rm -f "/etc/nginx/cloudteor-apps/${APP_NAME}.conf" 2>/dev/null || true
   else
     ensure_cloudteor_http_server
-    local tpl="${SCRIPT_DIR}/../templates/nginx-path.conf.tpl"
+    local tpl="${LIB_DIR}/../templates/nginx-path.conf.tpl"
     local out="/etc/nginx/cloudteor-apps/${APP_NAME}.conf"
     render_template "${tpl}" "${out}"
     rm -f "/etc/nginx/sites-enabled/${APP_NAME}" 2>/dev/null || true
@@ -141,7 +143,7 @@ render_nginx_config() {
 }
 
 render_systemd_unit() {
-  local tpl="${SCRIPT_DIR}/../templates/systemd-api.service.tpl"
+  local tpl="${LIB_DIR}/../templates/systemd-api.service.tpl"
   local out="/etc/systemd/system/${SYSTEMD_UNIT}.service"
   render_template "${tpl}" "${out}"
   systemctl daemon-reload

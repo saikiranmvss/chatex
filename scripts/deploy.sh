@@ -3,9 +3,9 @@
 # Usage: deploy.sh /path/to/artifact.tar.gz
 set -Eeuo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPTS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.sh
-source "${SCRIPT_DIR}/lib/common.sh"
+source "${SCRIPTS_ROOT}/lib/common.sh"
 
 ARTIFACT="${1:-}"
 [[ -n "${ARTIFACT}" && -f "${ARTIFACT}" ]] || die "Usage: $0 <artifact.tar.gz>"
@@ -82,12 +82,12 @@ main() {
 
   # SSL when domain configured
   if [[ "${DEPLOY_MODE}" == "domain" && -n "${APP_DOMAIN:-}" ]]; then
-    bash "${SCRIPT_DIR}/setup-ssl.sh" || log "WARN: SSL setup skipped or failed (non-fatal)"
+    bash "${SCRIPTS_ROOT}/setup-ssl.sh" || log "WARN: SSL setup skipped or failed (non-fatal)"
   fi
 
   # Keep server-side scripts in sync with latest release
   mkdir -p "${APP_HOME}/scripts"
-  cp -a "${SCRIPT_DIR}/." "${APP_HOME}/scripts/"
+  cp -a "${SCRIPTS_ROOT}/." "${APP_HOME}/scripts/"
   chown -R "${DEPLOY_USER}:${DEPLOY_USER}" "${APP_HOME}/scripts"
   chmod +x "${APP_HOME}/scripts/"*.sh "${APP_HOME}/scripts/lib/"*.sh 2>/dev/null || true
 

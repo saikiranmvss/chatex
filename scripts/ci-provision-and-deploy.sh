@@ -4,13 +4,13 @@
 set -Eeuo pipefail
 
 ARTIFACT="${1:?artifact path required}"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPTS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # shellcheck source=lib/common.sh
-source "${SCRIPT_DIR}/lib/common.sh"
+source "${SCRIPTS_ROOT}/lib/common.sh"
 
 require_root_or_sudo
 
 log "=== CI: provision + deploy for ${APP_NAME:-app} ==="
-bash "${SCRIPT_DIR}/create_server.sh"
-bash "${SCRIPT_DIR}/deploy.sh" "${ARTIFACT}"
+bash "${SCRIPTS_ROOT}/create_server.sh"
+bash "${SCRIPTS_ROOT}/deploy.sh" "${ARTIFACT}"

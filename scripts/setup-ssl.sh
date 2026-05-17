@@ -2,9 +2,9 @@
 # Enable Let's Encrypt HTTPS when APP_DOMAIN (or APP_SUBDOMAIN + SERVER_BASE_DOMAIN) is set.
 set -Eeuo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPTS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.sh
-source "${SCRIPT_DIR}/lib/common.sh"
+source "${SCRIPTS_ROOT}/lib/common.sh"
 
 [[ "$(id -u)" -eq 0 ]] || die "Run as root or via sudo"
 
