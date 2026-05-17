@@ -144,13 +144,22 @@ write_env_file() {
   fi
 }
 
+# Lets Encrypt directory name (cert-name or legacy domain folder).
+resolve_ssl_cert_name() {
+  if [[ -f "/etc/letsencrypt/live/${APP_NAME}/fullchain.pem" ]]; then
+    echo "${APP_NAME}"
+  elif [[ -n "${APP_DOMAIN:-}" && -f "/etc/letsencrypt/live/${APP_DOMAIN}/fullchain.pem" ]]; then
+    echo "${APP_DOMAIN}"
+  fi
+}
+
 render_template() {
   local tpl="$1" out="$2"
   require_cmd envsubst
   export APP_NAME APP_PORT APP_HOME BASE_PATH DEPLOY_MODE NGINX_SERVER_NAME
   export CLIENT_MAX_BODY_SIZE ENABLE_WEBSOCKET HEALTH_PATH SYSTEMD_UNIT
-  export NODE_VERSION API_START_CMD DEPLOY_USER API_CWD_REL
-  envsubst '${APP_NAME} ${APP_PORT} ${APP_HOME} ${BASE_PATH} ${DEPLOY_MODE} ${NGINX_SERVER_NAME} ${CLIENT_MAX_BODY_SIZE} ${ENABLE_WEBSOCKET} ${HEALTH_PATH} ${SYSTEMD_UNIT} ${NODE_VERSION} ${API_START_CMD} ${DEPLOY_USER} ${API_CWD_REL}' \
+  export NODE_VERSION API_START_CMD DEPLOY_USER API_CWD_REL SSL_CERT_NAME
+  envsubst '${APP_NAME} ${APP_PORT} ${APP_HOME} ${BASE_PATH} ${DEPLOY_MODE} ${NGINX_SERVER_NAME} ${CLIENT_MAX_BODY_SIZE} ${ENABLE_WEBSOCKET} ${HEALTH_PATH} ${SYSTEMD_UNIT} ${NODE_VERSION} ${API_START_CMD} ${DEPLOY_USER} ${API_CWD_REL} ${SSL_CERT_NAME}' \
     < "${tpl}" > "${out}"
 }
 
@@ -171,7 +180,13 @@ render_nginx_config() {
   resolve_deploy_mode
   ensure_cloudteor_http_server
   if [[ "${DEPLOY_MODE}" == "domain" ]]; then
+    SSL_CERT_NAME="$(resolve_ssl_cert_name || true)"
+    export SSL_CERT_NAME
     local tpl="${LIB_DIR}/../templates/nginx-domain.conf.tpl"
+    if [[ -n "${SSL_CERT_NAME}" && -f "${LIB_DIR}/../templates/nginx-domain-ssl.conf.tpl" ]]; then
+      tpl="${LIB_DIR}/../templates/nginx-domain-ssl.conf.tpl"
+      log "Using HTTPS nginx template (cert: ${SSL_CERT_NAME})"
+    fi
     local out="/etc/nginx/sites-available/${APP_NAME}"
     render_template "${tpl}" "${out}"
     ln -sfn "${out}" "/etc/nginx/sites-enabled/${APP_NAME}"
