@@ -93,11 +93,7 @@ provision_database() {
 }
 
 install_deploy_scripts() {
-  local dest="${APP_HOME}/scripts"
-  mkdir -p "${dest}"
-  cp -a "${SCRIPTS_ROOT}/." "${dest}/"
-  chown -R "${DEPLOY_USER}:${DEPLOY_USER}" "${dest}"
-  chmod +x "${dest}"/*.sh "${dest}/lib/"*.sh 2>/dev/null || true
+  sync_deploy_scripts "${SCRIPTS_ROOT}"
 }
 
 main() {

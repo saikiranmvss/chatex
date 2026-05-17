@@ -47,6 +47,26 @@ resolve_app_name() {
   DEPLOY_LOG="${SHARED_DIR}/logs/deploy.log"
 }
 
+# Copy scripts to ${APP_HOME}/scripts unless already running from that path (GitHub Actions).
+sync_deploy_scripts() {
+  local src_dir="$1"
+  [[ -n "${src_dir}" ]] || die "sync_deploy_scripts: source directory required"
+  resolve_app_name
+  local dest="${APP_HOME}/scripts"
+  mkdir -p "${dest}"
+  local src resolved_dest
+  src="$(cd "${src_dir}" && pwd -P)"
+  resolved_dest="$(cd "${dest}" && pwd -P)"
+  if [[ "${src}" == "${resolved_dest}" ]]; then
+    log "Deploy scripts already at ${dest}; skipping copy"
+  else
+    cp -a "${src_dir}/." "${dest}/"
+    log "Installed deploy scripts at ${dest}"
+  fi
+  chown -R "${DEPLOY_USER}:${DEPLOY_USER}" "${dest}"
+  chmod +x "${dest}"/*.sh "${dest}/lib/"*.sh 2>/dev/null || true
+}
+
 resolve_deploy_mode() {
   if [[ -n "${APP_DOMAIN:-}" ]]; then
     DEPLOY_MODE="domain"

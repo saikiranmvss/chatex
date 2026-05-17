@@ -85,11 +85,7 @@ main() {
     bash "${SCRIPTS_ROOT}/setup-ssl.sh" || log "WARN: SSL setup skipped or failed (non-fatal)"
   fi
 
-  # Keep server-side scripts in sync with latest release
-  mkdir -p "${APP_HOME}/scripts"
-  cp -a "${SCRIPTS_ROOT}/." "${APP_HOME}/scripts/"
-  chown -R "${DEPLOY_USER}:${DEPLOY_USER}" "${APP_HOME}/scripts"
-  chmod +x "${APP_HOME}/scripts/"*.sh "${APP_HOME}/scripts/lib/"*.sh 2>/dev/null || true
+  sync_deploy_scripts "${SCRIPTS_ROOT}"
 
   trap - ERR
   release_deploy_lock
