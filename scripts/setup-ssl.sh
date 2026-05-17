@@ -19,9 +19,10 @@ if [[ -d "/etc/letsencrypt/live/${APP_DOMAIN}" ]]; then
   log "Certificate already exists for ${APP_DOMAIN}"
   certbot renew --nginx --quiet || true
 else
-  log "Requesting certificate for ${APP_DOMAIN}"
-  certbot --nginx -d "${APP_DOMAIN}" --non-interactive --agree-tos -m "${SSL_EMAIL}" \
-    --redirect
+  log "Requesting certificate for ${APP_DOMAIN} (cert-name: ${APP_NAME})"
+  # One domain per cert/site file — never combine multiple -d flags or all subdomains share one root.
+  certbot --nginx -d "${APP_DOMAIN}" --cert-name "${APP_NAME}" --non-interactive --agree-tos \
+    -m "${SSL_EMAIL}" --redirect
 fi
 
 nginx -t && systemctl reload nginx

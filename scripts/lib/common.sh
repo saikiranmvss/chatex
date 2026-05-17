@@ -156,17 +156,19 @@ render_template() {
 
 ensure_cloudteor_http_server() {
   mkdir -p /etc/nginx/cloudteor-apps
-  local master="/etc/nginx/sites-available/cloudteor-http"
-  if [[ ! -f "${master}" ]]; then
-    cp "${LIB_DIR}/../templates/nginx-cloudteor-http.conf" "${master}"
-    ln -sfn "${master}" /etc/nginx/sites-enabled/cloudteor-http
-    rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
-    log "Installed shared cloudteor-http nginx server block"
+  local redirects="/etc/nginx/cloudteor-apps/ip-redirects.conf"
+  if [[ -f "${LIB_DIR}/../templates/nginx-ip-redirects.conf" ]]; then
+    cp "${LIB_DIR}/../templates/nginx-ip-redirects.conf" "${redirects}"
   fi
+  local master="/etc/nginx/sites-available/cloudteor-http"
+  cp "${LIB_DIR}/../templates/nginx-cloudteor-http.conf" "${master}"
+  ln -sfn "${master}" /etc/nginx/sites-enabled/cloudteor-http
+  rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
 }
 
 render_nginx_config() {
   resolve_deploy_mode
+  ensure_cloudteor_http_server
   if [[ "${DEPLOY_MODE}" == "domain" ]]; then
     local tpl="${LIB_DIR}/../templates/nginx-domain.conf.tpl"
     local out="/etc/nginx/sites-available/${APP_NAME}"
@@ -174,7 +176,6 @@ render_nginx_config() {
     ln -sfn "${out}" "/etc/nginx/sites-enabled/${APP_NAME}"
     rm -f "/etc/nginx/cloudteor-apps/${APP_NAME}.conf" 2>/dev/null || true
   else
-    ensure_cloudteor_http_server
     local tpl="${LIB_DIR}/../templates/nginx-path.conf.tpl"
     local out="/etc/nginx/cloudteor-apps/${APP_NAME}.conf"
     render_template "${tpl}" "${out}"
