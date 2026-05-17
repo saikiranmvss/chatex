@@ -121,13 +121,19 @@ router.patch("/groups/:groupId/members/:userId/role", requireAuth, async (req, r
     return;
   }
 
+  const memberWhere = and(
+    eq(conversationMembersTable.conversationId, groupId),
+    eq(conversationMembersTable.userId, targetUserId),
+  );
+  if (!memberWhere) {
+    res.status(500).json({ error: "Invalid query" });
+    return;
+  }
+
   const updated = await updateWhere(
     conversationMembersTable,
     { role: parsed.data.role },
-    and(
-      eq(conversationMembersTable.conversationId, groupId),
-      eq(conversationMembersTable.userId, targetUserId),
-    ),
+    memberWhere,
   );
 
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, updated.userId)).limit(1);
