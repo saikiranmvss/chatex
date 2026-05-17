@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import bcrypt from "bcryptjs";
-import { eq } from "drizzle-orm";
-import { db, usersTable } from "@workspace/db";
+import { eq, or } from "drizzle-orm";
+import { db, insertOne, updateOneById, usersTable } from "@workspace/db";
 import { RegisterBody, LoginBody, UpdateMeBody, ChangePasswordBody } from "@workspace/api-zod";
 import { signToken, requireAuth, getUser } from "../lib/auth";
 
@@ -15,23 +15,41 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   }
   const { username, email, password, displayName } = parsed.data;
 
-  const existing = await db.select().from(usersTable)
-    .where(eq(usersTable.email, email))
+  const existing = await db.select({ email: usersTable.email, username: usersTable.username })
+    .from(usersTable)
+    .where(or(eq(usersTable.email, email), eq(usersTable.username, username)))
     .limit(1);
   if (existing.length > 0) {
-    res.status(400).json({ error: "Email already in use" });
+    const taken = existing[0];
+    if (taken.email === email) {
+      res.status(400).json({ error: "Email already in use" });
+    } else {
+      res.status(400).json({ error: "Username already taken" });
+    }
     return;
   }
 
   const passwordHash = await bcrypt.hash(password, 12);
-  const [user] = await db.insert(usersTable).values({
-    username,
-    email,
-    passwordHash,
-    displayName: displayName ?? username,
-    presence: "online",
-    lastSeenAt: new Date(),
-  }).returning();
+  let user;
+  try {
+    user = await insertOne(usersTable, {
+      username,
+      email,
+      passwordHash,
+      displayName: displayName ?? username,
+      presence: "online",
+      lastSeenAt: new Date(),
+    });
+  } catch (err) {
+    const code = err instanceof Error && "cause" in err
+      ? (err as { cause?: { errno?: number } }).cause?.errno
+      : undefined;
+    if (code === 1062) {
+      res.status(400).json({ error: "Email or username already in use" });
+      return;
+    }
+    throw err;
+  }
 
   const token = signToken({ userId: user.id, role: user.role });
   res.status(201).json({
@@ -62,8 +80,7 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     return;
   }
 
-  await db.update(usersTable).set({ presence: "online", lastSeenAt: new Date() })
-    .where(eq(usersTable.id, user.id));
+  await db.update(usersTable).set({ presence: "online" }).where(eq(usersTable.id, user.id));
 
   const token = signToken({ userId: user.id, role: user.role });
   res.json({ token, user: sanitizeUser({ ...user, presence: "online" }) });
@@ -71,7 +88,8 @@ router.post("/auth/login", async (req, res): Promise<void> => {
 
 router.post("/auth/logout", requireAuth, async (req, res): Promise<void> => {
   const { userId } = getUser(req);
-  await db.update(usersTable).set({ presence: "offline" }).where(eq(usersTable.id, userId));
+  const { updateUserPresence } = await import("../lib/ws-server");
+  await updateUserPresence(userId, "offline");
   res.sendStatus(204);
 });
 
@@ -98,7 +116,7 @@ router.patch("/auth/me", requireAuth, async (req, res): Promise<void> => {
   if (parsed.data.avatarUrl != null) updates.avatarUrl = parsed.data.avatarUrl;
   if (parsed.data.presence != null) updates.presence = parsed.data.presence as "online" | "away" | "offline";
 
-  const [user] = await db.update(usersTable).set(updates).where(eq(usersTable.id, userId)).returning();
+  const user = await updateOneById(usersTable, userId, updates);
   res.json(sanitizeUser(user));
 });
 

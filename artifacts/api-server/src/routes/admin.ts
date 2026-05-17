@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, count, ilike, and, gte, sql } from "drizzle-orm";
+import { eq, count, like, and, gte, sql } from "drizzle-orm";
 import { db, usersTable, messagesTable, conversationsTable, notificationsTable, reportsTable } from "@workspace/db";
 import { AdminBroadcastBody, UpdateAdminSettingsBody } from "@workspace/api-zod";
 import { requireAuth, requireAdmin, getUser } from "../lib/auth";
@@ -61,7 +61,7 @@ router.get("/admin/users", requireAuth, requireAdmin, async (req, res): Promise<
   let users;
   if (q) {
     users = await db.select().from(usersTable)
-      .where(ilike(usersTable.username, `%${q}%`))
+      .where(like(usersTable.username, `%${q}%`))
       .limit(limit).offset(offset);
   } else if (statusFilter) {
     users = await db.select().from(usersTable)

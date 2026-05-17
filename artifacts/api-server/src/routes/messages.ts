@@ -1,14 +1,23 @@
 import { Router, type IRouter } from "express";
 import { eq, and, desc } from "drizzle-orm";
-import { db, usersTable, messagesTable, conversationMembersTable, starredMessagesTable } from "@workspace/db";
+import {
+  db,
+  insertOne,
+  messagesTable,
+  conversationMembersTable,
+  conversationsTable,
+  starredMessagesTable,
+  updateOneById,
+  usersTable,
+} from "@workspace/db";
 import { SendMessageBody, EditMessageBody, ReactToMessageBody } from "@workspace/api-zod";
 import { requireAuth, getUser } from "../lib/auth";
 import { sanitizeUser } from "./auth";
-import { broadcast } from "../lib/ws-server";
+import { broadcast, getActiveViewerIds } from "../lib/ws-server";
+import { notifyNewMessage } from "../lib/notify";
+import { normalizeReactions, type Reaction } from "../lib/reactions";
 
 const router: IRouter = Router();
-
-type Reaction = { emoji: string; count: number; userIds: number[] };
 
 async function buildMessage(
   msg: typeof messagesTable.$inferSelect,
@@ -50,7 +59,7 @@ async function buildMessage(
     isPinned: msg.isPinned,
     isStarred: starredSet.has(msg.id),
     isDeleted: msg.isDeleted,
-    reactions: (msg.reactions as Reaction[]) ?? [],
+    reactions: normalizeReactions(msg.reactions),
     createdAt: msg.createdAt.toISOString(),
     editedAt: msg.editedAt?.toISOString() ?? null,
   };
@@ -100,7 +109,7 @@ router.post("/conversations/:conversationId/messages", requireAuth, async (req, 
     return;
   }
 
-  const [msg] = await db.insert(messagesTable).values({
+  const msg = await insertOne(messagesTable, {
     conversationId,
     senderId: userId,
     content: parsed.data.content,
@@ -112,17 +121,53 @@ router.post("/conversations/:conversationId/messages", requireAuth, async (req, 
     mediaSize: parsed.data.mediaSize ?? null,
     mediaName: parsed.data.mediaName ?? null,
     reactions: [],
-  }).returning();
+  });
 
   await db.update(conversationMembersTable)
     .set({ unreadCount: 0 })
     .where(and(eq(conversationMembersTable.conversationId, conversationId), eq(conversationMembersTable.userId, userId)));
 
+  const viewingUserIds = new Set(getActiveViewerIds(conversationId));
+  const members = await db
+    .select()
+    .from(conversationMembersTable)
+    .where(eq(conversationMembersTable.conversationId, conversationId));
+
+  for (const member of members) {
+    if (member.userId === userId) continue;
+    if (viewingUserIds.has(member.userId)) continue;
+    await db
+      .update(conversationMembersTable)
+      .set({ unreadCount: member.unreadCount + 1 })
+      .where(eq(conversationMembersTable.id, member.id));
+  }
+
+  await db
+    .update(conversationsTable)
+    .set({ updatedAt: new Date() })
+    .where(eq(conversationsTable.id, conversationId));
+
   const msgData = await buildMessage(msg, userId, new Set());
   res.status(201).json(msgData);
 
   // Broadcast to all conversation members via WebSocket
-  broadcast(conversationId, { type: "message:new", payload: msgData as Record<string, unknown> });
+  broadcast(
+    conversationId,
+    { type: "message:new", payload: msgData as Record<string, unknown> },
+    userId,
+  );
+
+  void notifyNewMessage(
+    conversationId,
+    userId,
+    {
+      id: msg.id,
+      content: msg.content,
+      type: msg.type,
+      mediaName: msg.mediaName,
+    },
+    viewingUserIds,
+  );
 });
 
 router.get("/messages/starred", requireAuth, async (req, res): Promise<void> => {
@@ -176,9 +221,11 @@ router.patch("/messages/:messageId", requireAuth, async (req, res): Promise<void
     return;
   }
 
-  const [updated] = await db.update(messagesTable)
-    .set({ content: parsed.data.content, isEdited: true, editedAt: new Date() })
-    .where(eq(messagesTable.id, messageId)).returning();
+  const updated = await updateOneById(messagesTable, messageId, {
+    content: parsed.data.content,
+    isEdited: true,
+    editedAt: new Date(),
+  });
 
   const starred = await db.select().from(starredMessagesTable).where(eq(starredMessagesTable.userId, userId));
   const starredSet = new Set(starred.map(s => s.messageId));
@@ -223,8 +270,8 @@ router.post("/messages/:messageId/react", requireAuth, async (req, res): Promise
     return;
   }
 
-  const reactions: Reaction[] = (msg.reactions as Reaction[]) ?? [];
-  const existing = reactions.find(r => r.emoji === parsed.data.emoji);
+  const reactions = normalizeReactions(msg.reactions);
+  const existing = reactions.find((r) => r.emoji === parsed.data.emoji);
 
   if (existing) {
     if (existing.userIds.includes(userId)) {

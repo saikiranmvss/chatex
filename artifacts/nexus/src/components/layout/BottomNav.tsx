@@ -1,10 +1,13 @@
 import { Link, useLocation } from "wouter";
 import { MessageSquare, Hash, Star, Bell, Shield, Settings } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { useChatWebSocket } from "@/contexts/chat-websocket";
+import { NavBadge } from "./NavBadge";
 
 export function BottomNav() {
   const [location] = useLocation();
   const { user } = useAuth();
+  const { unreadNotificationCount } = useChatWebSocket();
 
   const items = [
     { icon: MessageSquare, label: "Chat", path: "/" },
@@ -24,11 +27,16 @@ export function BottomNav() {
         const isActive = location === item.path;
         return (
           <Link key={item.path} href={item.path} className="flex-1">
-            <div className={`flex flex-col items-center justify-center py-2 gap-0.5 transition-colors ${
-              isActive ? "text-primary" : "text-muted-foreground"
-            }`}>
+            <div
+              className={`relative flex flex-col items-center justify-center py-2.5 gap-0.5 transition-colors min-h-[52px] ${
+                isActive ? "text-primary" : "text-muted-foreground"
+              }`}
+            >
               <item.icon className={`w-5 h-5 ${isActive ? "stroke-[2.5]" : "stroke-2"}`} />
               <span className="text-[9px] font-medium leading-none">{item.label}</span>
+              {item.path === "/notifications" && (
+                <NavBadge count={unreadNotificationCount} className="top-0.5 right-[calc(50%-20px)]" />
+              )}
             </div>
           </Link>
         );

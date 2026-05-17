@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, or, desc } from "drizzle-orm";
-import { db, usersTable, conversationsTable, conversationMembersTable, messagesTable } from "@workspace/db";
+import { db, conversationsTable, conversationMembersTable, insertOne, messagesTable, updateOneById, usersTable } from "@workspace/db";
 import { CreateConversationBody, UpdateConversationBody } from "@workspace/api-zod";
 import { requireAuth, getUser } from "../lib/auth";
 import { sanitizeUser } from "./auth";
@@ -124,7 +124,7 @@ router.post("/conversations", requireAuth, async (req, res): Promise<void> => {
       }
     }
 
-    const [conv] = await db.insert(conversationsTable).values({ type: "direct" }).returning();
+    const conv = await insertOne(conversationsTable, { type: "direct" });
     await db.insert(conversationMembersTable).values([
       { conversationId: conv.id, userId, role: "member" },
       { conversationId: conv.id, userId: targetUserId, role: "member" },
@@ -135,13 +135,13 @@ router.post("/conversations", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  const [conv] = await db.insert(conversationsTable).values({
+  const conv = await insertOne(conversationsTable, {
     type: type as "group" | "channel",
     name: name ?? null,
     description: description ?? null,
     avatarUrl: avatarUrl ?? null,
     ownerId: userId,
-  }).returning();
+  });
 
   const allMemberIds = Array.from(new Set([userId, ...(memberIds ?? [])]));
   await db.insert(conversationMembersTable).values(
@@ -235,9 +235,7 @@ router.patch("/conversations/:conversationId", requireAuth, async (req, res): Pr
 
   let conv;
   if (Object.keys(convUpdates).length > 0) {
-    const [updated] = await db.update(conversationsTable).set(convUpdates)
-      .where(eq(conversationsTable.id, conversationId)).returning();
-    conv = updated;
+    conv = await updateOneById(conversationsTable, conversationId, convUpdates);
   } else {
     const [existing] = await db.select().from(conversationsTable).where(eq(conversationsTable.id, conversationId)).limit(1);
     conv = existing;

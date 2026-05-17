@@ -1,22 +1,37 @@
-import { pgTable, serial, text, boolean, timestamp, integer } from "drizzle-orm/pg-core";
+import {
+  mysqlTable,
+  int,
+  varchar,
+  text,
+  timestamp,
+} from "drizzle-orm/mysql-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
 
-export const platformSettingsTable = pgTable("platform_settings", {
-  id: serial("id").primaryKey(),
-  key: text("key").notNull().unique(),
+export const platformSettingsTable = mysqlTable("platform_settings", {
+  id: int("id").autoincrement().primaryKey(),
+  key: varchar("key", { length: 255 }).notNull().unique(),
   value: text("value").notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
 });
 
-export const blockedUsersTable = pgTable("blocked_users", {
-  id: serial("id").primaryKey(),
-  blockerId: integer("blocker_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
-  blockedId: integer("blocked_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+export const blockedUsersTable = mysqlTable("blocked_users", {
+  id: int("id").autoincrement().primaryKey(),
+  blockerId: int("blocker_id")
+    .notNull()
+    .references(() => usersTable.id, { onDelete: "cascade" }),
+  blockedId: int("blocked_id")
+    .notNull()
+    .references(() => usersTable.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-export const insertPlatformSettingSchema = createInsertSchema(platformSettingsTable).omit({ id: true, updatedAt: true });
+export const insertPlatformSettingSchema = createInsertSchema(
+  platformSettingsTable,
+).omit({ id: true, updatedAt: true });
 export type InsertPlatformSetting = z.infer<typeof insertPlatformSettingSchema>;
 export type PlatformSetting = typeof platformSettingsTable.$inferSelect;

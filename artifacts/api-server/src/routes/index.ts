@@ -9,10 +9,12 @@ import channelsRouter from "./channels";
 import notificationsRouter from "./notifications";
 import adminRouter from "./admin";
 import dashboardRouter from "./dashboard";
+import uploadsRouter from "./uploads";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(uploadsRouter);
 router.use(authRouter);
 router.use(usersRouter);
 router.use(conversationsRouter);

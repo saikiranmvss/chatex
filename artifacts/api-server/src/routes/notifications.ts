@@ -50,4 +50,29 @@ router.post("/notifications/read-all", requireAuth, async (req, res): Promise<vo
   res.sendStatus(204);
 });
 
+router.get("/notifications/unread-count", requireAuth, async (req, res): Promise<void> => {
+  const { userId } = getUser(req);
+  const rows = await db
+    .select()
+    .from(notificationsTable)
+    .where(and(eq(notificationsTable.userId, userId), eq(notificationsTable.isRead, false)));
+  res.json({ count: rows.length });
+});
+
+router.patch("/notifications/:notificationId/read", requireAuth, async (req, res): Promise<void> => {
+  const { userId } = getUser(req);
+  const raw = Array.isArray(req.params.notificationId)
+    ? req.params.notificationId[0]
+    : req.params.notificationId;
+  const notificationId = parseInt(raw, 10);
+
+  await db
+    .update(notificationsTable)
+    .set({ isRead: true })
+    .where(
+      and(eq(notificationsTable.id, notificationId), eq(notificationsTable.userId, userId)),
+    );
+  res.sendStatus(204);
+});
+
 export default router;

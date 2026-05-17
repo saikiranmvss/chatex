@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and } from "drizzle-orm";
-import { db, usersTable, conversationMembersTable } from "@workspace/db";
+import { db, conversationMembersTable, insertOne, updateWhere, usersTable } from "@workspace/db";
 import { AddGroupMemberBody, UpdateGroupMemberRoleBody } from "@workspace/api-zod";
 import { requireAuth, getUser } from "../lib/auth";
 import { sanitizeUser } from "./auth";
@@ -65,11 +65,11 @@ router.post("/groups/:groupId/members", requireAuth, async (req, res): Promise<v
     return;
   }
 
-  const [newMember] = await db.insert(conversationMembersTable).values({
+  const newMember = await insertOne(conversationMembersTable, {
     conversationId: groupId,
     userId: parsed.data.userId,
     role: parsed.data.role ?? "member",
-  }).returning();
+  });
 
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, newMember.userId)).limit(1);
   res.status(201).json({
@@ -121,10 +121,14 @@ router.patch("/groups/:groupId/members/:userId/role", requireAuth, async (req, r
     return;
   }
 
-  const [updated] = await db.update(conversationMembersTable)
-    .set({ role: parsed.data.role })
-    .where(and(eq(conversationMembersTable.conversationId, groupId), eq(conversationMembersTable.userId, targetUserId)))
-    .returning();
+  const updated = await updateWhere(
+    conversationMembersTable,
+    { role: parsed.data.role },
+    and(
+      eq(conversationMembersTable.conversationId, groupId),
+      eq(conversationMembersTable.userId, targetUserId),
+    ),
+  );
 
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, updated.userId)).limit(1);
   res.json({

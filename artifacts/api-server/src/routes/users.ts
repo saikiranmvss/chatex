@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, ilike, or, and, ne } from "drizzle-orm";
+import { eq, like, or, and, ne } from "drizzle-orm";
 import { db, usersTable, blockedUsersTable } from "@workspace/db";
 import { requireAuth, getUser } from "../lib/auth";
 import { sanitizeUser } from "./auth";
@@ -16,9 +16,9 @@ router.get("/users", requireAuth, async (req, res): Promise<void> => {
     .where(
       q
         ? or(
-            ilike(usersTable.username, `%${q}%`),
-            ilike(usersTable.displayName, `%${q}%`),
-            ilike(usersTable.email, `%${q}%`),
+            like(usersTable.username, `%${q}%`),
+            like(usersTable.displayName, `%${q}%`),
+            like(usersTable.email, `%${q}%`),
           )
         : ne(usersTable.id, userId)
     )

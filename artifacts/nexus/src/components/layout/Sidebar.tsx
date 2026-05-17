@@ -4,10 +4,13 @@ import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { useLogout } from "@workspace/api-client-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useChatWebSocket } from "@/contexts/chat-websocket";
+import { NavBadge } from "./NavBadge";
 
 export function Sidebar() {
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
+  const { unreadNotificationCount } = useChatWebSocket();
   const logoutMutation = useLogout();
 
   const handleLogout = () => {
@@ -45,6 +48,11 @@ export function Sidebar() {
               <div className={`flex items-center w-full px-2 lg:px-3 py-2 rounded-md cursor-pointer transition-colors ${isActive ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent/50"}`}>
                 <item.icon className="w-5 h-5 shrink-0" />
                 <span className="hidden lg:block ml-3 text-sm font-medium">{item.label}</span>
+                {item.path === "/notifications" && unreadNotificationCount > 0 && (
+                  <span className="hidden lg:flex ml-auto min-w-[20px] h-5 px-1.5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold items-center justify-center">
+                    {unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}
+                  </span>
+                )}
               </div>
             </Link>
           );

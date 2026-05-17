@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq, ilike, and, count, sql } from "drizzle-orm";
-import { db, channelsTable, channelSubscribersTable, usersTable } from "@workspace/db";
+import { eq, like, and, count, sql } from "drizzle-orm";
+import { db, channelsTable, channelSubscribersTable, insertOne, usersTable } from "@workspace/db";
 import { CreateChannelBody } from "@workspace/api-zod";
 import { requireAuth, getUser } from "../lib/auth";
 
@@ -32,7 +32,7 @@ router.get("/channels", requireAuth, async (req, res): Promise<void> => {
   const limit = Math.min(Number(req.query.limit) || 20, 50);
 
   const channels = await db.select().from(channelsTable)
-    .where(q ? ilike(channelsTable.name, `%${q}%`) : eq(channelsTable.isPublic, true))
+    .where(q ? like(channelsTable.name, `%${q}%`) : eq(channelsTable.isPublic, true))
     .limit(limit);
 
   const result = await Promise.all(channels.map(c => buildChannel(c, userId)));
@@ -47,13 +47,13 @@ router.post("/channels", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  const [channel] = await db.insert(channelsTable).values({
+  const channel = await insertOne(channelsTable, {
     name: parsed.data.name,
     description: parsed.data.description ?? null,
     avatarUrl: parsed.data.avatarUrl ?? null,
     isPublic: parsed.data.isPublic ?? true,
     ownerId: userId,
-  }).returning();
+  });
 
   await db.insert(channelSubscribersTable).values({ channelId: channel.id, userId });
   res.status(201).json(await buildChannel(channel, userId));

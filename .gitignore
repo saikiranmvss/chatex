@@ -27,6 +27,13 @@ node_modules
 !.vscode/launch.json
 !.vscode/extensions.json
 
+# env
+.env
+.env.local
+
+# uploaded chat media
+artifacts/api-server/uploads/
+
 # misc
 /.sass-cache
 /connect.lock
